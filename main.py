@@ -1,7 +1,7 @@
 import os
 import random
 import logging
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, imghdr
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 from datetime import time
 import pytz
