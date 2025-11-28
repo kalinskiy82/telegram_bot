@@ -2,7 +2,7 @@ import os
 import random
 import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 from datetime import time
 import pytz
 
@@ -28,40 +28,45 @@ WISHES = [
 
 subscribers = set()
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def start(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     subscribers.add(chat_id)
     keyboard = [[InlineKeyboardButton("🌟 ПОЖЕЛАТЬ", callback_data="wish")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
+    update.message.reply_text(
         "Привет! Я твой утренний бот 😊\n\n"
         "Каждое утро в 08:00 я буду присылать новое пожелание.\n"
         "Хочешь прямо сейчас? Жми кнопку!",
         reply_markup=reply_markup
     )
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def button_handler(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     if query.data == "wish":
         wish = random.choice(WISHES)
-        await query.edit_message_text(f"✨ {wish}")
+        query.edit_message_text(f"✨ {wish}")
 
-async def morning_wish(context: ContextTypes.DEFAULT_TYPE):
+def morning_wish(context: CallbackContext):
     for chat_id in subscribers:
         wish = random.choice(WISHES)
         try:
-            await context.bot.send_message(chat_id=chat_id, text=f"☀️ Доброе утро!\n\n{wish}")
+            context.bot.send_message(chat_id=chat_id, text=f"☀️ Доброе утро!\n\n{wish}")
         except Exception as e:
             logging.error(f"Ошибка отправки пожелания: {e}")
 
 def main():
-    app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_handler))
+    updater = Updater(TOKEN, use_context=True)
+    dp = updater.dispatcher
+
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CallbackQueryHandler(button_handler))
+
     tz = pytz.timezone("Europe/Kiev")
-    app.job_queue.run_daily(morning_wish, time=time(hour=8, minute=0, tzinfo=tz))
-    app.run_polling()
+    updater.job_queue.run_daily(morning_wish, time=time(hour=8, minute=0, tzinfo=tz))
+
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == "__main__":
     main()
